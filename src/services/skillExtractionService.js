@@ -14,10 +14,7 @@ async function extractSkills(resumeText) {
   // The new @google/genai SDK uses ai.models.generateContent
   const result = await ai.models.generateContent({
     model: modelName,
-    contents: PROMPT + '
-
-Resume text:
-' + resumeText,
+    contents: PROMPT + '\n\nResume text:\n' + resumeText,
   });
   
   const text = result.text();

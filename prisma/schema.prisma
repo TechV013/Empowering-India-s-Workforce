@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role          @default(JOB_SEEKER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  profile      Profile?
+  aiProfile    CandidateAIProfile?
+  resumeAnalysis ResumeAnalysis?
+  jobMatches   JobMatch[]
+  resumes      Resume[]
+  applications Application[]
+  skills       UserSkill[]
+  savedJobs    SavedJob[]
+  postedJobs   Job[]         @relation("PostedJobs")
+}
+
+model Profile {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  phone       String?
+  location    String?
+  education   String?
+  experience  String?
+  bio         String?
+  linkedin    String?
+  github      String?
+  portfolio   String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Skill {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  users       UserSkill[]
+  jobs        JobSkill[]
+}
+
+model UserSkill {
+  id          Int     @id @default(autoincrement())
+  userId      Int
+  skillId     Int
+  level       String?
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill       Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+}
+
+model Job {
+  id             Int           @id @default(autoincrement())
+  title          String
+  company        String
+  description    String
+  location       String
+  jobType        String
+  salary         String?
+  experience     String?
+  isRemote       Boolean       @default(false)
+  postedById     Int?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  postedBy       User?         @relation("PostedJobs", fields: [postedById], references: [id], onDelete: SetNull)
+  skills         JobSkill[]
+  applications   Application[]
+  savedBy        SavedJob[]
+  jobMatches     JobMatch[]
+  embedding           Json?
+  embeddingModel      String?
+  embeddingDimensions Int?
+  embeddingUpdatedAt  DateTime?
+}
+
+model JobSkill {
+  id          Int     @id @default(autoincrement())
+  jobId       Int
+  skillId     Int
+
+  job         Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill       Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, skillId])
+}
+
+model Resume {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  fileName    String
+  filePath    String
+  mimeType    String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Application {
+  id          Int               @id @default(autoincrement())
+  userId      Int
+  jobId       Int
+  status      ApplicationStatus  @default(APPLIED)
+  appliedAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+}
+
+model SavedJob {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  jobId       Int
+  createdAt   DateTime @default(now())
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job         Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+}
+
+enum Role {
+  JOB_SEEKER
+  RECRUITER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  APPLIED
+  REVIEWING
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+model CandidateAIProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  summary         String?
+  targetRoles     String[]
+  experienceYears Float?
+  education       Json?
+  experience      Json?
+  projects        Json?
+  certifications  String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  embedding           Json?
+  embeddingModel      String?
+  embeddingDimensions Int?
+  embeddingUpdatedAt  DateTime?
+}
+model ResumeAnalysis {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  score       Int
+  strengths   String[]
+  weaknesses  String[]
+  skillGaps   String[]
+  suggestions String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model JobMatch {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  jobId             Int
+  score             Float
+  semanticScore     Float
+  skillScore        Float
+  experienceScore   Float
+  preferenceScore   Float
+  roleScore         Float
+  matchedSkills     String[]
+  missingSkills     String[]
+  explanation       Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+}

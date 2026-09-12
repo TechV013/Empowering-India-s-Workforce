@@ -18,9 +18,7 @@ async function generateJobEmbedding(job) {
     'Job Type: ' + job.jobType,
     'Location: ' + job.location,
     'Remote: ' + (job.isRemote ? 'Yes' : 'No')
-  ].join('
-
-');
+  ].join('\n\n');
 
   // 2. Call Gemini embedding API
   const model = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2';

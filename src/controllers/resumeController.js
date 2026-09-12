@@ -85,7 +85,7 @@ async function deleteResume(req, res) {
 
     const fullPath = path.join(
       process.cwd(),
-      resume.filePath.replace(/^/+/, "")
+      resume.filePath.replace(/^\/+/, "")
     );
 
     if (fs.existsSync(fullPath)) {

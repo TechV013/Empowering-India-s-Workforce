@@ -3,10 +3,32 @@ const path = require('path');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 
+
+function resolveResumePath(filePath) {
+  if (!filePath) return undefined;
+  const candidate = String(filePath).trim();
+
+  // Windows absolute path (e.g. multer output: C:\repo\uploads\x.pdf)
+  if (/^[a-zA-Z]:[\\/]/.test(candidate)) {
+    return path.normalize(candidate);
+  }
+
+  // POSIX absolute path (e.g. multer on Linux/Vercel: /tmp/... or /var/task/...)
+  if (candidate.startsWith('/')) {
+    // Web-style storage path (/uploads/<name>) -> resolve against the uploads root
+    if (candidate.startsWith('/uploads/')) {
+      return path.join(process.cwd(), candidate.replace(/^\/+/, ''));
+    }
+    return path.normalize(candidate);
+  }
+
+  // Everything else resolves against the process working directory
+  return path.resolve(process.cwd(), candidate);
+}
+
 async function extractResumeText(filePath, mimeType) {
   // 1. Read the file
-  // Replacing leading forward slashes or backslashes
-  const fullPath = path.join(process.cwd(), filePath.replace(/^[\\/]+/, ""));
+  const fullPath = resolveResumePath(filePath);
   
   let buffer;
   try {

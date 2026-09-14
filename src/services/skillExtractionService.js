@@ -17,7 +17,7 @@ async function extractSkills(resumeText) {
     contents: PROMPT + '\n\nResume text:\n' + resumeText,
   });
   
-  const text = result.text();
+  const text = result.text;
   
   let parsed;
   try {

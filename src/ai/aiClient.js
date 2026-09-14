@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const { GoogleGenAI } = require("@google/genai");
 
 if (!process.env.GOOGLE_API_KEY) {

@@ -32,7 +32,7 @@ async function analyzeCandidateProfile(candidateProfile, extractedSkills) {
     contents: PROMPT + '\n\nCandidate Profile JSON:\n' + contentToAnalyze,
   });
   
-  const text = result.text();
+  const text = result.text;
   
   let parsed;
   try {

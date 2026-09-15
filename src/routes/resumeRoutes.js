@@ -13,7 +13,10 @@ const { authenticate } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-const uploadDir = path.join(process.cwd(), "uploads");
+// Vercel functions have a read-only filesystem except /tmp; use /tmp on Vercel.
+const uploadDir = process.env.VERCEL
+  ? path.join("/tmp", "uploads")
+  : path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

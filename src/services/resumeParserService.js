@@ -34,10 +34,20 @@ async function extractResumeText(filePath, mimeType) {
   try {
     buffer = await fs.readFile(fullPath);
   } catch (error) {
-    if (error.code === 'ENOENT') {
+    // Vercel deployment: files written by multer live in /tmp. If the stored
+    // web-style path (/uploads/<name>) doesn't resolve locally, try /tmp.
+    if (error.code === 'ENOENT' && String(filePath).startsWith('/uploads/')) {
+      const tmpFallback = path.join('/tmp', 'uploads', path.basename(filePath));
+      try {
+        buffer = await fs.readFile(tmpFallback);
+      } catch (tmpError) {
+        throw new Error('File not found');
+      }
+    } else if (error.code === 'ENOENT') {
       throw new Error('File not found');
+    } else {
+      throw new Error('Could not read file');
     }
-    throw new Error('Could not read file');
   }
 
   // 2. Extract text based on MIME type

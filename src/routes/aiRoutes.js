@@ -6,7 +6,7 @@ const router = express.Router();
 const { getJobSkillGapController } = require("../controllers/skillGapController");
 const { getRankedCandidatesController } = require("../controllers/recruiterRankingController");
 const { getJobMatchController } = require("../controllers/matchController");
-const { analyzeResumeController } = require("../controllers/resumeAnalysisController");
+const { analyzeResumeController, getResumeAnalysisController } = require("../controllers/resumeAnalysisController");
 
 router.get("/jobs/recommended", authenticate, getRecommendedJobsController);
 
@@ -17,5 +17,7 @@ router.get("/recruiter/jobs/:jobId/candidates", authenticate, getRankedCandidate
 router.get("/jobs/:jobId/match", authenticate, getJobMatchController);
 
 router.post("/resumes/:resumeId/analyze", authenticate, analyzeResumeController);
+
+router.get("/resumes/:resumeId/analysis", authenticate, getResumeAnalysisController);
 
 module.exports = router;

@@ -60,12 +60,16 @@ async function runAIPipeline(userId, filePath, mimeType) {
 }
 
 async function getResumes(req, res) {
-  const resumes = await prisma.resume.findMany({
-    where: { userId: req.user.userId },
-    orderBy: { createdAt: "desc" }
-  });
-
-  res.json(resumes);
+  try {
+    const resumes = await prisma.resume.findMany({
+      where: { userId: req.user.userId },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(resumes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Unable to fetch resumes" });
+  }
 }
 
 async function deleteResume(req, res) {
@@ -83,10 +87,10 @@ async function deleteResume(req, res) {
       return res.status(404).json({ message: "Resume not found" });
     }
 
-    const fullPath = path.join(
-      process.cwd(),
-      resume.filePath.replace(/^\/+/, "")
-    );
+    const relativePath = resume.filePath.replace(/^\/+/, "");
+    const fullPath = process.env.VERCEL
+      ? path.join("/tmp", relativePath)
+      : path.join(process.cwd(), relativePath);
 
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);

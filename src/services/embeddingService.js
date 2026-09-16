@@ -19,18 +19,18 @@ async function generateCandidateEmbedding(candidateProfile) {
   ].join('\n\n');
 
   // 2. Call Gemini embedding API
-  const model = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-2';
+  const model = process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004';
   const dimensions = parseInt(process.env.EMBEDDING_DIMENSIONS || '768', 10);
 
   const result = await ai.models.embedContent({
     model: model,
-    contents: text,
+    content: text,
     config: {
       outputDimensionality: dimensions
     }
   });
 
-  const embedding = result.embedding.values;
+  const embedding = result.embedding?.values ?? result.embeddings?.[0]?.values;
 
   // 3. Validation
   if (!Array.isArray(embedding) || embedding.length !== dimensions || !embedding.every(v => Number.isFinite(v))) {
@@ -45,9 +45,16 @@ async function generateCandidateEmbedding(candidateProfile) {
 }
 
 async function saveCandidateEmbedding(userId, embeddingData) {
-  return await prisma.candidateAIProfile.update({
+  return await prisma.candidateAIProfile.upsert({
     where: { userId: userId },
-    data: {
+    update: {
+      embedding: embeddingData.embedding,
+      embeddingModel: embeddingData.model,
+      embeddingDimensions: embeddingData.dimensions,
+      embeddingUpdatedAt: new Date()
+    },
+    create: {
+      userId: userId,
       embedding: embeddingData.embedding,
       embeddingModel: embeddingData.model,
       embeddingDimensions: embeddingData.dimensions,

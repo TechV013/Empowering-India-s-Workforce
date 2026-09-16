@@ -135,9 +135,30 @@ async function updateJob(req, res) {
       return res.status(403).json({ message: "Not allowed" });
     }
 
+    const {
+      title,
+      company,
+      description,
+      location,
+      jobType,
+      salary,
+      experience,
+      isRemote
+    } = req.body;
+
+    const data = {};
+    if (title !== undefined) data.title = title;
+    if (company !== undefined) data.company = company;
+    if (description !== undefined) data.description = description;
+    if (location !== undefined) data.location = location;
+    if (jobType !== undefined) data.jobType = jobType;
+    if (salary !== undefined) data.salary = salary;
+    if (experience !== undefined) data.experience = experience;
+    if (isRemote !== undefined) data.isRemote = Boolean(isRemote);
+
     const updated = await prisma.job.update({
       where: { id },
-      data: req.body
+      data
     });
 
     // Run embedding asynchronously on update

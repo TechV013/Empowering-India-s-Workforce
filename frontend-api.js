@@ -1,10 +1,17 @@
 // Copy this file into your friend's React frontend, e.g. src/api.js
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL || "https://empowering-workforcebackend.vercel.app/api";
 
 function getToken() {
   return localStorage.getItem("worknext_token");
+}
+
+class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
 }
 
 async function request(endpoint, options = {}) {
@@ -30,11 +37,17 @@ async function request(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || "Request failed");
+    if (response.status === 401) {
+      localStorage.removeItem("worknext_token");
+      localStorage.removeItem("worknext_user");
+    }
+    throw new ApiError(data.message || "Request failed", response.status);
   }
 
   return data;
 }
+
+export { ApiError };
 
 export const registerUser = (payload) =>
   request("/auth/register", {

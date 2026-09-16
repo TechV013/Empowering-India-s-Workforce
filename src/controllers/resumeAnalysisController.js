@@ -1,8 +1,23 @@
+const path = require('path');
 const prisma = require('../prisma');
 const { extractResumeText } = require('../services/resumeParserService');
 const { extractSkills } = require('../services/skillExtractionService');
 const { buildCandidateProfile } = require('../services/candidateProfileService');
 const { analyzeCandidateProfile } = require('../services/resumeAnalysisService');
+
+function resolveFilePath(storedPath) {
+  if (!storedPath) return storedPath;
+  const s = String(storedPath).trim();
+  if (/^[a-zA-Z]:[\\/]/.test(s)) return path.normalize(s);
+  if (s.startsWith('/')) {
+    if (s.startsWith('/uploads/')) {
+      if (process.env.VERCEL) return path.join('/tmp', s.replace(/^\/+/, ''));
+      return path.join(process.cwd(), s.replace(/^\/+/, ''));
+    }
+    return path.normalize(s);
+  }
+  return path.resolve(process.cwd(), s);
+}
 
 async function analyzeResumeController(req, res) {
   try {
@@ -13,36 +28,21 @@ async function analyzeResumeController(req, res) {
       return res.status(400).json({ message: "Invalid resume id" });
     }
 
-    // 1. Load the resume and verify ownership
-    const resume = await prisma.resume.findUnique({
-      where: { id: resumeId }
-    });
+    const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
 
-    if (!resume) {
-      return res.status(404).json({ message: "Resume not found" });
-    }
+    if (!resume) return res.status(404).json({ message: "Resume not found" });
+    if (resume.userId !== userId) return res.status(403).json({ message: "Not allowed" });
 
-    if (resume.userId !== userId) {
-      return res.status(403).json({ message: "Not allowed" });
-    }
-
-    // 2. Load the candidate's AI profile
-    let candidateProfile = await prisma.candidateAIProfile.findUnique({
-      where: { userId }
-    });
-
+    let candidateProfile = await prisma.candidateAIProfile.findUnique({ where: { userId } });
     let extractedSkills;
 
     if (!candidateProfile) {
-      // 2a. Profile missing: build/update it from the uploaded resume
-      //     (same chain the resume-upload pipeline uses: parser -> skills -> profile)
-      const { text } = await extractResumeText(resume.filePath, resume.mimeType);
+      const resolvedPath = resolveFilePath(resume.filePath);
+      const { text } = await extractResumeText(resolvedPath, resume.mimeType);
       const { skills } = await extractSkills(text);
       extractedSkills = skills.map(s => s.name);
-
       candidateProfile = await buildCandidateProfile(userId, text, extractedSkills);
     } else {
-      // 2b. Profile exists: use stored normalized skills
       const userSkills = await prisma.userSkill.findMany({
         where: { userId },
         include: { skill: true }
@@ -50,9 +50,7 @@ async function analyzeResumeController(req, res) {
       extractedSkills = userSkills.map(us => us.skill.name);
     }
 
-    // 3. Run analysis via the existing service (persists via ResumeAnalysis.upsert)
     const analysis = await analyzeCandidateProfile(candidateProfile, extractedSkills);
-
     res.json(analysis);
   } catch (error) {
     console.error(error);
@@ -60,4 +58,21 @@ async function analyzeResumeController(req, res) {
   }
 }
 
-module.exports = { analyzeResumeController };
+async function getResumeAnalysisController(req, res) {
+  try {
+    const userId = req.user.userId;
+
+    const analysis = await prisma.resumeAnalysis.findUnique({ where: { userId } });
+
+    if (!analysis) {
+      return res.status(404).json({ message: "No analysis found. Please run an analysis first." });
+    }
+
+    res.json(analysis);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Unable to fetch analysis" });
+  }
+}
+
+module.exports = { analyzeResumeController, getResumeAnalysisController };

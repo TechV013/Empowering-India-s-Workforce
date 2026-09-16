@@ -112,19 +112,28 @@ async function login(req, res) {
 }
 
 async function me(req, res) {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      profile: true
-    }
-  });
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        profile: true
+      }
+    });
 
-  res.json(user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Unable to fetch user" });
+  }
 }
 
 module.exports = { register, login, me };

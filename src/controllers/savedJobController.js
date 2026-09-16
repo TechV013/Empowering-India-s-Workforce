@@ -34,18 +34,25 @@ async function unsaveJob(req, res) {
 
     res.json({ message: "Job removed from saved jobs" });
   } catch (error) {
-    res.status(404).json({ message: "Saved job not found" });
+    if (error.code === "P2025") {
+      return res.status(404).json({ message: "Saved job not found" });
+    }
+    res.status(500).json({ message: "Unable to remove saved job" });
   }
 }
 
 async function getSavedJobs(req, res) {
-  const saved = await prisma.savedJob.findMany({
-    where: { userId: req.user.userId },
-    include: { job: true },
-    orderBy: { createdAt: "desc" }
-  });
-
-  res.json(saved);
+  try {
+    const saved = await prisma.savedJob.findMany({
+      where: { userId: req.user.userId },
+      include: { job: true },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(saved);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Unable to fetch saved jobs" });
+  }
 }
 
 module.exports = { saveJob, unsaveJob, getSavedJobs };

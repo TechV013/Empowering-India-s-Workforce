@@ -1,5 +1,6 @@
 require("dotenv").config();
 const { PrismaClient } = require("@prisma/client");
+const { generateJobEmbedding, saveJobEmbedding } = require("../src/services/jobEmbeddingService");
 
 const prisma = new PrismaClient();
 
@@ -37,11 +38,18 @@ async function main() {
     }
   ];
 
-  for (const job of jobs) {
-    await prisma.job.create({ data: job });
+  for (const jobData of jobs) {
+    const job = await prisma.job.create({ data: jobData });
+    try {
+      const embeddingData = await generateJobEmbedding(job);
+      await saveJobEmbedding(job.id, embeddingData);
+      console.log(`Embedding generated for: ${job.title}`);
+    } catch (err) {
+      console.error(`Failed to generate embedding for "${job.title}":`, err.message);
+    }
   }
 
-  console.log("Seed jobs created.");
+  console.log("Seed complete.");
 }
 
 main()

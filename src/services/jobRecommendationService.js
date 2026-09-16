@@ -22,8 +22,10 @@ async function getRecommendedJobs(userId, options = {}) {
 
   const jobs = await prisma.job.findMany({
     where: {
-      NOT: { id: { in: appliedJobIds } },
-      NOT: { embedding: null } // Only jobs with embeddings
+      AND: [
+        { NOT: { id: { in: appliedJobIds } } },
+        { NOT: { embedding: null } }
+      ]
     },
     include: {
       skills: { include: { skill: true } }

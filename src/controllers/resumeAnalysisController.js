@@ -54,7 +54,7 @@ async function analyzeResumeController(req, res) {
     res.json(analysis);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Unable to analyze resume" });
+    res.status(500).json({ message: error.message || "Unable to analyze resume" });
   }
 }
 

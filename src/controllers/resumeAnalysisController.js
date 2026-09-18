@@ -37,11 +37,15 @@ async function analyzeResumeController(req, res) {
     let extractedSkills;
 
     if (!candidateProfile) {
-      const resolvedPath = resolveFilePath(resume.filePath);
-      const { text } = await extractResumeText(resolvedPath, resume.mimeType);
-      const { skills } = await extractSkills(text);
+      // Prefer the text extracted at upload time (persistent) over the
+      // ephemeral file on Vercel.
+      const resumeText = resume.parsedText
+        ? resume.parsedText
+        : await readResumeText(resume, resolveFilePath(resume.filePath));
+
+      const { skills } = await extractSkills(resumeText);
       extractedSkills = skills.map(s => s.name);
-      candidateProfile = await buildCandidateProfile(userId, text, extractedSkills);
+      candidateProfile = await buildCandidateProfile(userId, resumeText, extractedSkills);
     } else {
       const userSkills = await prisma.userSkill.findMany({
         where: { userId },
@@ -56,6 +60,11 @@ async function analyzeResumeController(req, res) {
     console.error(error);
     res.status(500).json({ message: error.message || "Unable to analyze resume" });
   }
+}
+
+async function readResumeText(resume, filePath) {
+  const { text } = await extractResumeText(filePath, resume.mimeType);
+  return text;
 }
 
 async function getResumeAnalysisController(req, res) {

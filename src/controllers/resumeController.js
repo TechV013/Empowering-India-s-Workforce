@@ -13,18 +13,29 @@ async function uploadResume(req, res) {
       return res.status(400).json({ message: "Please upload a resume file" });
     }
 
+    // Extract text immediately so the analysis pipeline never depends on the
+    // ephemeral filesystem (Vercel /tmp is not persistent between requests).
+    let parsedText = null;
+    try {
+      const { text } = await extractResumeText(req.file.path, req.file.mimetype);
+      parsedText = text;
+    } catch (error) {
+      console.error("Resume text extraction failed:", error.message);
+    }
+
     const resume = await prisma.resume.create({
       data: {
         userId: req.user.userId,
         fileName: req.file.originalname,
         filePath: `/uploads/${req.file.filename}`,
         mimeType: req.file.mimetype,
-        size: req.file.size
+        size: req.file.size,
+        parsedText
       }
     });
 
     // AI Pipeline (async background execution)
-    runAIPipeline(req.user.userId, req.file.path, req.file.mimetype).catch(err => 
+    runAIPipeline(req.user.userId, parsedText, req.file.mimetype).catch(err => 
       console.error("AI Pipeline failed for user:", req.user.userId, err)
     );
 
@@ -41,20 +52,21 @@ async function uploadResume(req, res) {
   }
 }
 
-async function runAIPipeline(userId, filePath, mimeType) {
-  // 1. Parser
-  const { text: resumeText } = await extractResumeText(filePath, mimeType);
+async function runAIPipeline(userId, resumeText, mimeType) {
+  if (!resumeText || resumeText.trim().length === 0) {
+    throw new Error("Resume text not available");
+  }
   
-  // 2. Skill Extraction
+  // 1. Skill Extraction
   const { skills: extractedSkills } = await extractSkills(resumeText);
   
-  // 3. Profile
+  // 2. Profile
   const profile = await buildCandidateProfile(userId, resumeText, extractedSkills.map(s => s.name));
   
-  // 4. Analysis
+  // 3. Analysis
   await analyzeCandidateProfile(profile, extractedSkills.map(s => s.name));
   
-  // 5. Embedding
+  // 4. Embedding
   const embeddingData = await generateCandidateEmbedding(profile);
   await saveCandidateEmbedding(userId, embeddingData);
 }

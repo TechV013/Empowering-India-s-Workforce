@@ -98,15 +98,16 @@ model JobSkill {
 }
 
 model Resume {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   userId      Int
   fileName    String
   filePath    String
   mimeType    String
   size        Int
-  createdAt   DateTime @default(now())
+  parsedText  String?
+  createdAt   DateTime  @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Application {

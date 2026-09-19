@@ -24,7 +24,8 @@ function cosineSimilarity(vectorA, vectorB) {
 
 function calculateJobMatch(candidateProfile, candidateEmbedding, job, jobEmbedding) {
   // 1. Semantic score (40%)
-  const similarity = cosineSimilarity(candidateEmbedding.embedding, job.embedding);
+  const hasSemanticData = candidateEmbedding && candidateEmbedding.embedding && jobEmbedding && jobEmbedding.embedding;
+  const similarity = hasSemanticData ? cosineSimilarity(candidateEmbedding.embedding, jobEmbedding.embedding) : 0;
   const semanticScore = Math.max(0, similarity) * 100;
 
   // 2. Skill score (30%)

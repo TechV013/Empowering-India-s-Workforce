@@ -1,5 +1,6 @@
 const ai = require('../ai/aiClient');
 const prisma = require('../prisma');
+const { extractJson } = require('../utils/jsonParser');
 
 const PROMPT = `You are an expert resume analyst. Analyze the provided candidate profile data and provide:
 - score: 0-100 based on relevance, structure, experience quality, and impact.
@@ -36,8 +37,7 @@ async function analyzeCandidateProfile(candidateProfile, extractedSkills) {
   
   let parsed;
   try {
-    const jsonString = text.replace(new RegExp('```json' + '\\' + 'n?', 'g'), '').replace(new RegExp('```' + '\\' + 'n?', 'g'), '').trim();
-    parsed = JSON.parse(jsonString);
+    parsed = extractJson(text);
   } catch (e) {
     throw new Error('Invalid JSON from model for resume analysis');
   }

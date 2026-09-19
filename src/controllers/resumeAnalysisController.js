@@ -4,6 +4,7 @@ const { extractResumeText } = require('../services/resumeParserService');
 const { extractSkills } = require('../services/skillExtractionService');
 const { buildCandidateProfile } = require('../services/candidateProfileService');
 const { analyzeCandidateProfile } = require('../services/resumeAnalysisService');
+const { generateCandidateEmbedding, saveCandidateEmbedding } = require('../services/embeddingService');
 
 function resolveFilePath(storedPath) {
   if (!storedPath) return storedPath;
@@ -52,9 +53,23 @@ async function analyzeResumeController(req, res) {
         include: { skill: true }
       });
       extractedSkills = userSkills.map(us => us.skill.name);
+      candidateProfile.skills = extractedSkills;
     }
 
     const analysis = await analyzeCandidateProfile(candidateProfile, extractedSkills);
+
+    // Persist the candidate embedding so /api/ai/jobs/recommended can use it.
+    // Vercel freezes serverless functions after the response, so the background
+    // pipeline never completes; generate + save the embedding here instead.
+    if (!candidateProfile.embedding) {
+      try {
+        const embeddingData = await generateCandidateEmbedding(candidateProfile);
+        await saveCandidateEmbedding(userId, embeddingData);
+      } catch (embedErr) {
+        console.error("Embedding generation failed:", embedErr.message);
+      }
+    }
+
     res.json(analysis);
   } catch (error) {
     console.error(error);

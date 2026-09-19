@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { Prisma } = require('@prisma/client');
 const { calculateJobMatch } = require('./matchEngineService');
 
 async function getRecommendedJobs(userId, options = {}) {
@@ -20,13 +21,24 @@ async function getRecommendedJobs(userId, options = {}) {
   });
   const appliedJobIds = appliedJobs.map(a => a.jobId);
 
+  // Use raw SQL for the embedding filter to stay robust against
+  // generated-client drift in serverless builds.
+  let eligibleRaw;
+  try {
+    const exclusion = appliedJobIds.length
+      ? Prisma.sql` AND id NOT IN (${Prisma.join(appliedJobIds)})`
+      : Prisma.empty;
+    eligibleRaw = await prisma.$queryRaw(Prisma.sql`
+      SELECT id FROM "Job"
+      WHERE embedding IS NOT NULL${exclusion}
+    `);
+  } catch (e) {
+    eligibleRaw = await prisma.$queryRaw`SELECT id FROM "Job" WHERE embedding IS NOT NULL`;
+  }
+  const eligibleIds = eligibleRaw.map(r => r.id);
+
   const jobs = await prisma.job.findMany({
-    where: {
-      AND: [
-        { NOT: { id: { in: appliedJobIds } } },
-        { NOT: { embedding: null } }
-      ]
-    },
+    where: { id: { in: eligibleIds } },
     include: {
       skills: { include: { skill: true } }
     }

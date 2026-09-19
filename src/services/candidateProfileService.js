@@ -1,5 +1,6 @@
 const ai = require('../ai/aiClient');
 const prisma = require('../prisma');
+const { extractJson } = require('../utils/jsonParser');
 
 const PROMPT = `You are a resume analysis system.
 Extract the following information from the resume text in JSON format:
@@ -32,8 +33,7 @@ async function buildCandidateProfile(userId, resumeText, extractedSkills) {
   
   let parsed;
   try {
-    const jsonString = text.replace(new RegExp('```json' + '\\' + 'n?', 'g'), '').replace(new RegExp('```' + '\\' + 'n?', 'g'), '').trim();
-    parsed = JSON.parse(jsonString);
+    parsed = extractJson(text);
   } catch (e) {
     throw new Error('Invalid JSON from model for candidate profile');
   }
